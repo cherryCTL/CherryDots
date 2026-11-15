@@ -24,8 +24,9 @@ import unicodedata
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlparse, urljoin
 from urllib.request import Request, urlopen
+from html.parser import HTMLParser
 
 repo, branch, home_target_arg, state_dir_arg = sys.argv[1:]
 
@@ -172,13 +173,191 @@ def panel(title, lines, status=None, width=None):
     print(paint(GLYPHS["bl"] + GLYPHS["h"] * (width - 2) + GLYPHS["br"], "primary"))
 
 
-def http_get(url):
+def http_get(url, accept="*/*"):
+    # urllib automatically honours HTTPS_PROXY / HTTP_PROXY / ALL_PROXY.
     request = Request(url, headers={
-        "User-Agent": "CherryDots-Installer/1.2",
-        "Accept": "application/vnd.github+json",
+        "User-Agent": "CherryDots-Installer/1.3 (+https://github.com/cherryCTL/CherryDots)",
+        "Accept": accept,
+        "Cache-Control": "no-cache",
     })
-    with urlopen(request, timeout=30) as response:
+    with urlopen(request, timeout=10) as response:
         return response.read()
+
+
+CDN_HOSTS = (
+    "cdn.jsdelivr.net",
+    "fastly.jsdelivr.net",
+    "gcore.jsdelivr.net",
+    "testingcf.jsdelivr.net",
+    "quantil.jsdelivr.net",
+)
+DOWNLOAD_HOST_HINT = None
+
+
+class DirectoryLinks(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.hrefs = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() == "a":
+            href = dict(attrs).get("href")
+            if href:
+                self.hrefs.append(href)
+
+
+def jsdelivr_file_list():
+    """Read the flat file list from jsDelivr's public GitHub package API."""
+    url = (
+        f"https://data.jsdelivr.com/v1/packages/gh/{repo}"
+        f"@{quote(branch, safe='/')}?structure=flat"
+    )
+    data = json.loads(http_get(url, "application/json"))
+    files = data.get("files") if isinstance(data, dict) else None
+    if not isinstance(files, list):
+        raise ValueError("jsDelivr returned an unexpected file-list response")
+
+    found = []
+    for item in files:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if not isinstance(name, str):
+            continue
+        path = name.lstrip("/")
+        # Flat listings contain files. Ignore directory entries if supplied.
+        if item.get("type") in ("directory", "dir") or "files" in item:
+            continue
+        if path.startswith("dots/"):
+            found.append({"source": path, "mode": None})
+    return found
+
+
+def cdn_directory_file_list(host):
+    """Fallback for networks where the metadata API is unreachable."""
+    package_prefix = f"/gh/{repo}@{quote(branch, safe='/')}/"
+    base_url = f"https://{host}{package_prefix}"
+    queue = ["dots/"]
+    visited = set()
+    found = {}
+    pages = 0
+
+    while queue:
+        directory = queue.pop(0)
+        if directory in visited:
+            continue
+        visited.add(directory)
+        pages += 1
+        if pages > 500:
+            raise ValueError("Repository contains too many directories for CDN listing")
+
+        page_url = base_url + quote(directory, safe="/")
+        html = http_get(page_url, "text/html,*/*")
+        parser = DirectoryLinks()
+        parser.feed(html.decode("utf-8", errors="replace"))
+
+        for href in parser.hrefs:
+            resolved = urlparse(urljoin(page_url, href))
+            if resolved.scheme != "https" or resolved.netloc != host:
+                continue
+            resolved_path = unquote(resolved.path)
+            if not resolved_path.startswith(package_prefix):
+                continue
+            relative_path = resolved_path[len(package_prefix):]
+            if not relative_path.startswith("dots/"):
+                continue
+            if relative_path == directory or relative_path in ("dots", "dots/"):
+                continue
+            if relative_path.endswith("/"):
+                if relative_path not in visited:
+                    queue.append(relative_path)
+            elif safe_relative_path(relative_path[len("dots/"):]):
+                found[relative_path] = {"source": relative_path, "mode": None}
+
+    return list(found.values())
+
+
+def github_api_file_list():
+    """Fallback to GitHub's tree API when CDN metadata is unavailable."""
+    api_url = (
+        f"https://api.github.com/repos/{repo}/git/trees/"
+        f"{quote(branch, safe='')}?recursive=1"
+    )
+    data = json.loads(http_get(api_url, "application/vnd.github+json"))
+    if data.get("truncated"):
+        raise ValueError("GitHub returned an incomplete file tree")
+
+    found = []
+    for item in data.get("tree", []):
+        path = item.get("path", "")
+        if item.get("type") != "blob" or not path.startswith("dots/"):
+            continue
+        if item.get("mode") not in ("100644", "100755"):
+            continue
+        found.append({"source": path, "mode": item.get("mode")})
+    return found
+
+
+def get_file_list():
+    errors = []
+    try:
+        files = jsdelivr_file_list()
+        if files:
+            return files, "jsDelivr"
+        errors.append("jsDelivr API: no files found under dots/")
+    except Exception as exc:
+        errors.append(f"jsDelivr API: {exc}")
+
+    for host in CDN_HOSTS:
+        try:
+            files = cdn_directory_file_list(host)
+            if files:
+                return files, f"{host}"
+        except Exception as exc:
+            errors.append(f"{host}: {exc}")
+
+    try:
+        files = github_api_file_list()
+        if files:
+            return files, "GitHub API"
+        errors.append("GitHub API: no files found under dots/")
+    except Exception as exc:
+        errors.append(f"GitHub API: {exc}")
+
+    raise RuntimeError("Could not reach any supported repository source. " + " | ".join(errors[-4:]))
+
+
+def download_file(source, preferred_source):
+    global DOWNLOAD_HOST_HINT
+    encoded_path = quote(source, safe="/")
+    preferred_hosts = []
+    if preferred_source in CDN_HOSTS:
+        preferred_hosts.append(preferred_source)
+    if DOWNLOAD_HOST_HINT in CDN_HOSTS and DOWNLOAD_HOST_HINT not in preferred_hosts:
+        preferred_hosts.append(DOWNLOAD_HOST_HINT)
+    preferred_hosts.extend(host for host in CDN_HOSTS if host not in preferred_hosts)
+
+    cdn_urls = [
+        f"https://{host}/gh/{repo}@{quote(branch, safe='/')}/{encoded_path}"
+        for host in preferred_hosts
+    ]
+    raw_url = (
+        f"https://raw.githubusercontent.com/{repo}/"
+        f"{quote(branch, safe='')}/{encoded_path}"
+    )
+    urls = cdn_urls + [raw_url]
+    if preferred_source == "GitHub API":
+        urls = [raw_url] + cdn_urls
+
+    errors = []
+    for url in urls:
+        try:
+            content = http_get(url)
+            DOWNLOAD_HOST_HINT = urlparse(url).netloc
+            return content, DOWNLOAD_HOST_HINT
+        except Exception as exc:
+            errors.append(f"{urlparse(url).netloc}: {exc}")
+    raise RuntimeError("; ".join(errors))
 
 
 def fail(message, detail=None):
@@ -232,14 +411,49 @@ def display_destination(relative):
 def ask_confirmation():
     if os.environ.get("CHERRYDOTS_YES") == "1":
         return True
-    try:
-        with open("/dev/tty", "r+", encoding="utf-8", errors="replace") as tty:
-            tty.write("\n  Install these files? [y/N] ")
-            tty.flush()
-            answer = tty.readline().strip().lower()
-    except OSError:
-        fail("No interactive terminal is available.", "Run this command in a terminal, or set CHERRYDOTS_YES=1 for automation.")
-    return answer in ("y", "yes")
+
+    # `curl | sh` owns stdin for the script body, so never read the answer
+    # from stdin. Find the user's actual terminal, even when stdout is piped.
+    candidates = []
+    tty_env = os.environ.get("TTY")
+    if tty_env:
+        candidates.append(tty_env)
+    candidates.append("/dev/tty")
+    for fd in (0, 1, 2):
+        try:
+            if os.isatty(fd):
+                candidates.append(os.ttyname(fd))
+        except OSError:
+            pass
+
+    seen = set()
+    for path in candidates:
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        try:
+            fd = os.open(path, os.O_RDWR | getattr(os, "O_CLOEXEC", 0))
+            if not os.isatty(fd):
+                os.close(fd)
+                continue
+            try:
+                os.write(fd, "\n  Install these files? [y/N] ".encode("utf-8"))
+                answer = bytearray()
+                while True:
+                    char = os.read(fd, 1)
+                    if not char or char in (b"\n", b"\r"):
+                        break
+                    answer.extend(char)
+                return answer.decode("utf-8", errors="replace").strip().lower() in ("y", "yes")
+            finally:
+                os.close(fd)
+        except OSError:
+            continue
+
+    fail(
+        "Cannot ask for confirmation in this session.",
+        "No files were changed. Run from an interactive terminal/SSH session; use CHERRYDOTS_YES=1 only for unattended installs.",
+    )
 
 
 def main():
@@ -249,43 +463,29 @@ def main():
     ]
     panel("CherryDots", header, status="INSTALLER")
 
-    api_url = (
-        f"https://api.github.com/repos/{repo}/git/trees/"
-        f"{quote(branch, safe='')}?recursive=1"
-    )
-    print("\n  " + paint("Checking GitHub repository...", "secondary"))
+    print("\n  " + paint("Checking download sources...", "secondary"))
     try:
-        tree_data = json.loads(http_get(api_url))
-    except HTTPError as exc:
-        if exc.code == 404:
-            fail("Repository, branch or GitHub path was not found.", f"Check REPO='{repo}' and BRANCH='{branch}'.")
-        if exc.code == 403:
-            fail("GitHub API rate limit or access restriction.", "Try again later, or use a GitHub token if the repository is private.")
-        fail(f"GitHub returned HTTP {exc.code}.", str(exc))
-    except (URLError, TimeoutError, json.JSONDecodeError) as exc:
-        fail("Could not read the GitHub file list.", str(exc))
-
-    if tree_data.get("truncated"):
-        fail("GitHub returned an incomplete file tree.", "The installer will not proceed with a partial file list.")
+        remote_files, list_source = get_file_list()
+    except Exception as exc:
+        fail(
+            "Could not retrieve the CherryDots file list.",
+            f"Check your connection to jsDelivr/GitHub or configure HTTPS_PROXY.\n{exc}",
+        )
+    print("  " + paint(f"Source: {list_source}", "muted"))
 
     # Treat dots/ as the user's home directory. Every tracked regular file
     # keeps its path relative to dots/, with no special folders or mappings.
     prefix = "dots/"
     entries = []
-    for item in tree_data.get("tree", []):
-        path = item.get("path", "")
-        if item.get("type") != "blob" or not path.startswith(prefix):
+    for item in remote_files:
+        path = item.get("source", "")
+        if not path.startswith(prefix):
             continue
         relative = path[len(prefix):]
         if not safe_relative_path(relative):
             fail("An unsafe path was found in the repository.", path)
 
-        # Never recreate links or special files from a remote repository.
-        if item.get("mode") == "120000":
-            continue
-        if item.get("mode") not in ("100644", "100755"):
-            continue
-
+        # Only ordinary files are fetched. Symlinks and special files are skipped.
         destination = home_root.joinpath(*PurePosixPath(relative).parts)
         problem = destination_problem(home_root, relative, destination)
         if problem:
@@ -352,16 +552,12 @@ def main():
         return
 
     # Fetch every file before creating directories, backups or changing user files.
-    print("\n  " + paint("Downloading files from GitHub...", "secondary"))
+    print("\n  " + paint("Downloading files...", "secondary"))
     payloads = []
     for index, entry in enumerate(entries, 1):
-        raw_url = (
-            f"https://raw.githubusercontent.com/{repo}/"
-            f"{quote(branch, safe='')}/{quote(entry['source'], safe='/')}"
-        )
         try:
-            content = http_get(raw_url)
-        except (HTTPError, URLError, TimeoutError) as exc:
+            content, _used_source = download_file(entry["source"], list_source)
+        except Exception as exc:
             fail(f"Could not download {entry['source']}.", str(exc))
         payloads.append((entry, content))
         print(f"  {paint(f'[{index:>2}/{len(entries)}]', 'muted')} {paint(GLYPHS['check'], 'ok')} {entry['display']}  {paint('ready', 'ok')}")
@@ -405,7 +601,13 @@ def main():
                     handle.write(content)
                     handle.flush()
                     os.fsync(handle.fileno())
-                os.chmod(temporary_name, 0o755 if entry["mode"] == "100755" else 0o644)
+                if entry["mode"] == "100755":
+                    file_mode = 0o755
+                elif entry["status"] == "REPLACE":
+                    file_mode = entry["destination"].stat().st_mode & 0o777
+                else:
+                    file_mode = 0o644
+                os.chmod(temporary_name, file_mode)
                 os.replace(temporary_name, destination)
             finally:
                 if os.path.exists(temporary_name):
