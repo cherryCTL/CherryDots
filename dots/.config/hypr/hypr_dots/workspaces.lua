@@ -4,10 +4,10 @@ local workspaces = {
     [3]  = "Testing",
     [4]  = "Productivity",
     [5]  = "Social",
-    [6]  = "Capture",
-    [7]  = "Gaming",
-    [8]  = "Video",
-    [9]  = "Music",
+    [6]  = "Gaming",
+    [7]  = "Video",
+    [8]  = "Music",
+    [9]  = "Capture",
     [10] = "Network",
 }
 
