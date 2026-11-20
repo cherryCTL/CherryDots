@@ -9,14 +9,36 @@ local M = {}
 -- ============================================================
 -- GLOBAL WORKSPACE CONTROL
 -- ============================================================
-local WORKSPACE_DIRECTION = "vertical" -- "horizontal" or "vertical"
+-- "vertical"   -> slidefadevert
+-- "horizontal" -> slidefade
+local WORKSPACE_DIRECTION = "vertical"
+
+local function is_valid_direction(direction)
+    return direction == "horizontal" or direction == "vertical"
+end
 
 assert(
-    WORKSPACE_DIRECTION == "horizontal" or WORKSPACE_DIRECTION == "vertical",
+    is_valid_direction(WORKSPACE_DIRECTION),
     'WORKSPACE_DIRECTION must be "horizontal" or "vertical"'
 )
 
--- Each appearance profile keeps its own animation speeds and spring values.
+-- Workspace leaves all use one direction resolver. The style is generated
+-- when a profile is applied, so every profile follows the same setting.
+local workspace_leaves = {
+    workspaces = true,
+    workspacesIn = true,
+    workspacesOut = true,
+    specialWorkspace = true,
+    specialWorkspaceIn = true,
+    specialWorkspaceOut = true,
+}
+
+local function workspace_style(amount)
+    local style = WORKSPACE_DIRECTION == "vertical" and "slidefadevert" or "slidefade"
+    return style .. " " .. amount
+end
+
+-- Each appearance profile keeps its own spring parameters.
 local function register_spring(name, stiffness, damping)
     hl.curve(name, {
         type = "spring",
@@ -26,40 +48,41 @@ local function register_spring(name, stiffness, damping)
     })
 end
 
-local function workspace_style(amount)
-    local style = WORKSPACE_DIRECTION == "vertical" and "slidefadevert" or "slidefade"
-    return style .. " " .. amount
-end
-
 -- Custom curves are registered once when this module is required.
 hl.curve("sakura_normal", {
     type = "bezier",
     points = { {0.22, 1.0}, {0.36, 1.0} },
 })
 
--- Mac-like, controlled spring with a soft settle.
-register_spring("sakura_glass", 190, 24)
+-- Silk keeps its soft spring for window/layer motion, but uses a dedicated
+-- ease-out curve for workspace transitions. This avoids the spring's long
+-- settling tail while preserving the original 400 ms transition duration.
+register_spring("sakura_silk", 180, 26)
+hl.curve("sakura_silk_workspace", {
+    type = "bezier",
+    points = { {0.215, 0.61}, {0.355, 1.0} },
+})
 
--- Fast, controlled bezier motion; no spring bounce or wobble.
-hl.curve("sakura_gamer", {
+-- Rush: fast, controlled bezier motion with a crisp, energetic stop.
+hl.curve("sakura_rush", {
     type = "bezier",
     points = { {0.16, 1.0}, {0.30, 1.0} },
 })
 
--- Windows Aero: smooth ease-out, without spring bounce.
-hl.curve("sakura_aero", {
+-- Lumen: a gentle, polished curve with a measured start and soft finish.
+-- Unlike Rush, it should feel composed rather than immediately accelerating.
+hl.curve("sakura_lumen", {
     type = "bezier",
-    points = { {0.16, 1.0}, {0.30, 1.0} },
+    points = { {0.25, 0.10}, {0.25, 1.0} },
 })
 
--- Frost: quiet, icy and slightly overdamped, so it settles without wobble.
--- About 15% slower than the average tempo of the other spring-based profiles.
-register_spring("sakura_frost", 176.5, 29.2)
+-- Arctic: slightly overdamped and deliberately heavier, without becoming sluggish.
+register_spring("sakura_arctic", 180, 27.5)
 
--- Jelly: a soft, expressive spring curve paired with native window wobble.
-register_spring("sakura_jelly", 230, 16)
+-- Jiggle: a more underdamped spring gives window movement a clearer elastic bounce.
+register_spring("sakura_jiggle", 230, 20.5)
 
--- These are the actual animation leaves in the Hyprland animation tree.
+-- These are the animation leaves used by the current Hyprland animation tree.
 local leaves = {
     "global",
     "windows", "windowsIn", "windowsOut", "windowsMove",
@@ -75,11 +98,9 @@ local leaves = {
 }
 
 -- Animation speed is measured in deciseconds (1 = 100 ms).
+-- workspace_distance is applied to every workspace leaf at runtime.
 local profiles = {
-    -- Performance disables every leaf through the API's enabled flag.
-    -- A speed of 0 is invalid. Workspace direction has no visible effect
-    -- while transitions are disabled; the shared variable is used by all
-    -- profiles that actually animate workspaces.
+    -- Performance disables every animation leaf explicitly.
     performance = {
         disabled = true,
         settings = {},
@@ -89,143 +110,118 @@ local profiles = {
         curve = "sakura_normal",
         kind = "bezier",
         speed = 3.0,
+        workspace_distance = "12%",
         settings = {
-            windows = { speed = 4.0, style = "popin 96%" },
-            windowsIn = { speed = 3.5, style = "popin 96%" },
-            windowsOut = { speed = 2.8, style = "popin 96%" },
-            windowsMove = { speed = 3.0 },
-            layers = { speed = 3.5, style = "fade" },
-            layersIn = { speed = 3.5, style = "fade" },
-            layersOut = { speed = 2.8, style = "fade" },
-            workspaces = { speed = 4.0, style = workspace_style("12%") },
-            workspacesIn = { speed = 4.0, style = workspace_style("12%") },
-            workspacesOut = { speed = 4.0, style = workspace_style("12%") },
-            specialWorkspace = { speed = 4.0, style = workspace_style("12%") },
-            specialWorkspaceIn = { speed = 4.0, style = workspace_style("12%") },
-            specialWorkspaceOut = { speed = 4.0, style = workspace_style("12%") },
-            border = { speed = 2.5 },
-            zoomFactor = { speed = 3.0 },
-            monitorAdded = { speed = 4.0 },
-        },
-    },
-
-    glass = {
-        curve = "sakura_glass",
-        kind = "spring",
-        speed = 4.0,
-        settings = {
-            windows = { speed = 5.5, style = "popin 92%" },
-            windowsIn = { speed = 5.5, style = "popin 92%" },
-            windowsOut = { speed = 4.5, style = "popin 92%" },
-            windowsMove = { speed = 4.5 },
-            layers = { speed = 5.0, style = "fade" },
-            layersIn = { speed = 5.0, style = "fade" },
-            layersOut = { speed = 4.0, style = "fade" },
-            workspaces = { speed = 5.0, style = workspace_style("14%") },
-            workspacesIn = { speed = 5.0, style = workspace_style("14%") },
-            workspacesOut = { speed = 5.0, style = workspace_style("14%") },
-            specialWorkspace = { speed = 5.0, style = workspace_style("14%") },
-            specialWorkspaceIn = { speed = 5.0, style = workspace_style("14%") },
-            specialWorkspaceOut = { speed = 5.0, style = workspace_style("14%") },
-            border = { speed = 3.5 },
-            zoomFactor = { speed = 5.0 },
-            monitorAdded = { speed = 5.0 },
-        },
-    },
-
-    gamer = {
-        curve = "sakura_gamer",
-        kind = "bezier",
-        speed = 2.8,
-        settings = {
-            windows = { speed = 3.2, style = "popin 94%" },
-            windowsIn = { speed = 3.2, style = "popin 94%" },
-            windowsOut = { speed = 2.5, style = "popin 94%" },
+            windows = { speed = 3.8, style = "popin 96%" },
+            windowsIn = { speed = 3.4, style = "popin 96%" },
+            windowsOut = { speed = 2.7, style = "popin 96%" },
             windowsMove = { speed = 2.8 },
-            layers = { speed = 3.0, style = "slide bottom" },
-            layersIn = { speed = 3.0, style = "slide bottom" },
-            layersOut = { speed = 2.5, style = "slide bottom" },
-            workspaces = { speed = 3.5, style = workspace_style("24%") },
-            workspacesIn = { speed = 3.5, style = workspace_style("24%") },
-            workspacesOut = { speed = 3.5, style = workspace_style("24%") },
-            specialWorkspace = { speed = 3.5, style = workspace_style("24%") },
-            specialWorkspaceIn = { speed = 3.5, style = workspace_style("24%") },
-            specialWorkspaceOut = { speed = 3.5, style = workspace_style("24%") },
-            border = { speed = 2.2 },
-            zoomFactor = { speed = 3.0 },
+            layers = { speed = 3.2, style = "fade" },
+            layersIn = { speed = 3.2, style = "fade" },
+            layersOut = { speed = 2.6, style = "fade" },
+            border = { speed = 2.3 },
+            zoomFactor = { speed = 2.8 },
             monitorAdded = { speed = 3.5 },
         },
     },
 
-    aero = {
-        curve = "sakura_aero",
-        kind = "bezier",
-        speed = 3.5,
+    silk = {
+        curve = "sakura_silk",
+        kind = "spring",
+        workspace_curve = "sakura_silk_workspace",
+        speed = 4.0,
+        workspace_distance = "14%",
         settings = {
-            windows = { speed = 4.5, style = "popin 98%" },
-            windowsIn = { speed = 4.5, style = "popin 98%" },
-            windowsOut = { speed = 3.5, style = "popin 98%" },
-            windowsMove = { speed = 3.5 },
+            windows = { speed = 4.0, style = "popin 94%" },
+            windowsIn = { speed = 4.0, style = "popin 94%" },
+            windowsOut = { speed = 3.2, style = "popin 94%" },
+            windowsMove = { speed = 3.8 },
             layers = { speed = 4.0, style = "fade" },
             layersIn = { speed = 4.0, style = "fade" },
-            layersOut = { speed = 3.0, style = "fade" },
-            workspaces = { speed = 4.5, style = workspace_style("18%") },
-            workspacesIn = { speed = 4.5, style = workspace_style("18%") },
-            workspacesOut = { speed = 4.5, style = workspace_style("18%") },
-            specialWorkspace = { speed = 4.5, style = workspace_style("18%") },
-            specialWorkspaceIn = { speed = 4.5, style = workspace_style("18%") },
-            specialWorkspaceOut = { speed = 4.5, style = workspace_style("18%") },
+            layersOut = { speed = 3.2, style = "fade" },
+            border = { speed = 2.8 },
+            zoomFactor = { speed = 3.5 },
+            monitorAdded = { speed = 3.8 },
+        },
+    },
+
+    rush = {
+        curve = "sakura_rush",
+        kind = "bezier",
+        -- Hyprland speed is a duration (deciseconds), so a slightly larger
+        -- value makes the motion about 5-9% calmer without changing its curve.
+        speed = 3.0,
+        workspace_distance = "20%",
+        settings = {
+            windows = { speed = 3.2, style = "popin 94%" },
+            windowsIn = { speed = 3.2, style = "popin 94%" },
+            windowsOut = { speed = 2.6, style = "popin 94%" },
+            windowsMove = { speed = 2.8 },
+            layers = { speed = 3.0, style = "slide bottom" },
+            layersIn = { speed = 3.0, style = "slide bottom" },
+            layersOut = { speed = 2.5, style = "slide bottom" },
+            border = { speed = 2.1 },
+            zoomFactor = { speed = 3.0 },
+            monitorAdded = { speed = 3.4 },
+        },
+    },
+
+    lumen = {
+        curve = "sakura_lumen",
+        kind = "bezier",
+        -- A little more time plus a softer curve makes Lumen feel graceful,
+        -- not abrupt. Workspace travel distance remains unchanged.
+        speed = 3.8,
+        workspace_distance = "16%",
+        settings = {
+            windows = { speed = 4.1, style = "popin 98%" },
+            windowsIn = { speed = 4.1, style = "popin 98%" },
+            windowsOut = { speed = 3.4, style = "popin 98%" },
+            windowsMove = { speed = 3.5 },
+            layers = { speed = 3.9, style = "fade" },
+            layersIn = { speed = 3.9, style = "fade" },
+            layersOut = { speed = 3.1, style = "fade" },
             border = { speed = 3.0 },
             zoomFactor = { speed = 3.5 },
             monitorAdded = { speed = 4.0 },
         },
     },
 
-    frost = {
-        curve = "sakura_frost",
+    arctic = {
+        curve = "sakura_arctic",
         kind = "spring",
-        speed = 3.5,
+        speed = 4.0,
+        workspace_distance = "10%",
         settings = {
-            windows = { speed = 4.2, style = "popin 97%" },
-            windowsIn = { speed = 4.2, style = "popin 97%" },
-            windowsOut = { speed = 3.5, style = "popin 97%" },
-            windowsMove = { speed = 3.85 },
-            layers = { speed = 3.85, style = "slide bottom" },
-            layersIn = { speed = 3.85, style = "slide bottom" },
-            layersOut = { speed = 3.15, style = "slide bottom" },
-            workspaces = { speed = 4.2, style = workspace_style("10%") },
-            workspacesIn = { speed = 4.2, style = workspace_style("10%") },
-            workspacesOut = { speed = 4.2, style = workspace_style("10%") },
-            specialWorkspace = { speed = 4.2, style = workspace_style("10%") },
-            specialWorkspaceIn = { speed = 4.2, style = workspace_style("10%") },
-            specialWorkspaceOut = { speed = 4.2, style = workspace_style("10%") },
-            border = { speed = 3.15 },
-            zoomFactor = { speed = 3.85 },
-            monitorAdded = { speed = 4.2 },
+            windows = { speed = 4.1, style = "popin 97%" },
+            windowsIn = { speed = 4.1, style = "popin 97%" },
+            windowsOut = { speed = 3.3, style = "popin 97%" },
+            windowsMove = { speed = 3.7 },
+            layers = { speed = 4.0, style = "slide bottom" },
+            layersIn = { speed = 4.0, style = "slide bottom" },
+            layersOut = { speed = 3.2, style = "slide bottom" },
+            border = { speed = 2.8 },
+            zoomFactor = { speed = 3.4 },
+            monitorAdded = { speed = 3.8 },
         },
     },
 
-    jelly = {
-        curve = "sakura_jelly",
+    jiggle = {
+        curve = "sakura_jiggle",
         kind = "spring",
-        speed = 3.8,
+        speed = 3.4,
+        workspace_distance = "22%",
         settings = {
-            windows = { speed = 4.0, style = "popin 88%" },
-            windowsIn = { speed = 4.0, style = "popin 88%" },
-            windowsOut = { speed = 3.2, style = "popin 88%" },
-            windowsMove = { speed = 3.5 },
-            layers = { speed = 3.8, style = "slide top" },
-            layersIn = { speed = 3.8, style = "slide top" },
-            layersOut = { speed = 3.0, style = "slide top" },
-            workspaces = { speed = 4.2, style = workspace_style("30%") },
-            workspacesIn = { speed = 4.2, style = workspace_style("30%") },
-            workspacesOut = { speed = 4.2, style = workspace_style("30%") },
-            specialWorkspace = { speed = 4.2, style = workspace_style("30%") },
-            specialWorkspaceIn = { speed = 4.2, style = workspace_style("30%") },
-            specialWorkspaceOut = { speed = 4.2, style = workspace_style("30%") },
-            border = { speed = 3.0 },
-            zoomFactor = { speed = 4.0 },
-            monitorAdded = { speed = 4.2 },
+            windows = { speed = 3.6, style = "popin 90%" },
+            windowsIn = { speed = 3.6, style = "popin 90%" },
+            windowsOut = { speed = 2.9, style = "popin 90%" },
+            windowsMove = { speed = 3.1 },
+            layers = { speed = 3.5, style = "slide top" },
+            layersIn = { speed = 3.5, style = "slide top" },
+            layersOut = { speed = 2.8, style = "slide top" },
+            border = { speed = 2.7 },
+            zoomFactor = { speed = 3.4 },
+            monitorAdded = { speed = 3.6 },
         },
     },
 }
@@ -233,9 +229,8 @@ local profiles = {
 local function apply_leaf(leaf, profile, override)
     local settings = override or {}
 
-    -- Disabled profiles must not pass speed=0: hl.animation() rejects
-    -- non-positive speeds. The API returns immediately when enabled=false,
-    -- so only the leaf and enabled flag are sent for Performance.
+    -- Disabled profiles must not pass speed=0: Hyprland rejects
+    -- non-positive speeds. Only leaf and enabled=false are required.
     if profile.disabled then
         hl.animation({
             leaf = leaf,
@@ -244,26 +239,60 @@ local function apply_leaf(leaf, profile, override)
         return
     end
 
-    -- Every enabled leaf uses its own speed when provided; otherwise it uses
-    -- the default speed defined by its appearance profile.
     local args = {
         leaf = leaf,
         enabled = true,
         speed = settings.speed or profile.speed,
     }
 
-    args[profile.kind] = profile.curve
+    -- Workspace motion can use a dedicated curve without changing the
+    -- profile's window/layer motion. Silk uses this to avoid a spring tail
+    -- during workspace changes while keeping its original duration.
+    if workspace_leaves[leaf] and profile.workspace_curve then
+        args.bezier = profile.workspace_curve
+    else
+        args[profile.kind] = profile.curve
+    end
 
-    if settings.style then
+    -- Always derive workspace direction here, not while building the profile
+    -- table. Every profile follows the same horizontal/vertical selection.
+    if workspace_leaves[leaf] then
+        args.style = workspace_style(profile.workspace_distance or "12%")
+    elseif settings.style then
         args.style = settings.style
     end
 
     hl.animation(args)
 end
 
-function M.apply(name)
+function M.set_workspace_direction(direction)
+    if type(direction) ~= "string" then
+        return false, "Workspace direction must be a string"
+    end
+
+    direction = string.lower(direction)
+    if not is_valid_direction(direction) then
+        return false, 'Workspace direction must be "horizontal" or "vertical"'
+    end
+
+    WORKSPACE_DIRECTION = direction
+    return true
+end
+
+function M.get_workspace_direction()
+    return WORKSPACE_DIRECTION
+end
+
+function M.apply(name, direction)
     if type(name) ~= "string" then
         return false, "Animation profile name must be a string"
+    end
+
+    if direction ~= nil then
+        local direction_ok, direction_err = M.set_workspace_direction(direction)
+        if not direction_ok then
+            return false, direction_err
+        end
     end
 
     name = string.lower(name)
@@ -274,7 +303,7 @@ function M.apply(name)
     end
 
     -- Apply a root default, then explicitly set every leaf. This prevents
-    -- styles/speeds from an earlier profile from leaking into the next one.
+    -- styles and speeds from a previously active profile from leaking over.
     local ok, err = pcall(function()
         apply_leaf("global", profile)
 
@@ -283,9 +312,9 @@ function M.apply(name)
                 local is_angle_leaf =
                     leaf == "borderangle" or leaf == "shadowangle" or leaf == "glowangle"
 
-                -- Preserve the existing angle-animation policy in visual
-                -- profiles. Performance is explicit: every leaf, including
-                -- angle leaves, is enabled with a zero-duration transition.
+                -- Keep angle animations disabled in visual profiles. In
+                -- particular, never use the continuous "loop" style here:
+                -- it forces constant redraws and can waste GPU/battery.
                 if is_angle_leaf and name ~= "performance" then
                     hl.animation({ leaf = leaf, enabled = false })
                 else

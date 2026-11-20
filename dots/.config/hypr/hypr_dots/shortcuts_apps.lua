@@ -60,11 +60,6 @@ hl.bind(
 )
 
 hl.bind(
-    vars.mainMod .. " + CTRL + SHIFT + s",
-    hl.dsp.exec_cmd(vars.browser2_private)
-)
-
-hl.bind(
     vars.mainMod .. " + g",
     hl.dsp.exec_cmd(vars.gameEngine)
 )

@@ -205,11 +205,11 @@ end
 local appearance_order = {
     "normal",
     "performance",
-    "glass",
-    "gamer",
-    "aero",
-    "frost",
-    "jelly",
+    "silk",
+    "rush",
+    "lumen",
+    "arctic",
+    "jiggle",
 }
 
 local current_appearance_index = 1

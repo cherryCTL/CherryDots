@@ -101,9 +101,9 @@ local appearances = {
         },
     },
 
-    -- 3. GLASS
+    -- 3. SILK
     {
-        name = "Glass",
+        name = "Silk",
         config = {
             general = {
                 border_size = 2,
@@ -114,49 +114,43 @@ local appearances = {
                 wobble = {
                     enabled = false,
                 },
-                active_opacity = 0.95,
-                inactive_opacity = 0.89,
+                active_opacity = 0.92,
+                inactive_opacity = 0.90,
                 fullscreen_opacity = 1.0,
                 rounding = 14,
                 rounding_power = 4,
 
                 shadow = {
                     enabled = true,
-                    range = 9,
+                    range = 6,
                     render_power = 4,
                     color = "rgba(358fc866)",
                 },
 
                 blur = {
                     enabled = true,
-                    variant = "acrylic",
-                    size = 5,
-                    passes = 3,
-                    noise = 0.015,
-                    contrast = 1.12,
-                    brightness = 1.08,
-                    vibrancy = 0.38,
-                    vibrancy_darkness = 0.22,
-                    ignore_opacity = true,
+                    variant = "kawase",
+                    size = 2,
+                    passes = 1,
+                    noise = 0.008,
+                    contrast = 1.05,
+                    brightness = 1.03,
+                    vibrancy = 0.16,
+                    vibrancy_darkness = 0.12,
+                    ignore_opacity = false,
                     new_optimizations = true,
                     xray = false,
-                    popups = true,
-                    special = true,
+                    popups = false,
+                    special = false,
 
-                    acrylic = {
-                        aberration = 0.018,
-                        bulb = 56.0,
-                        clarity = 0.88,
-                        refraction = 16.0,
-                    },
                 },
             },
         },
     },
 
-    -- 4. GAMER
+    -- 4. RUSH
     {
-        name = "Gamer",
+        name = "Rush",
         config = {
             general = {
                 border_size = 2,
@@ -175,7 +169,7 @@ local appearances = {
 
                 shadow = {
                     enabled = true,
-                    range = 14,
+                    range = 10,
                     render_power = 4,
                     color = "rgba(7038d988)",
                 },
@@ -183,9 +177,9 @@ local appearances = {
                 blur = {
                     enabled = true,
                     variant = "aurora",
-                    size = 7,
-                    passes = 4,
-                    noise = 0.025,
+                    size = 5,
+                    passes = 2,
+                    noise = 0.018,
                     contrast = 1.18,
                     brightness = 1.08,
                     vibrancy = 0.62,
@@ -193,7 +187,7 @@ local appearances = {
                     ignore_opacity = true,
                     new_optimizations = true,
                     xray = false,
-                    popups = true,
+                    popups = false,
                     special = false,
 
                     aurora = {
@@ -207,9 +201,9 @@ local appearances = {
         },
     },
 
-    -- 5. AERO
+    -- 5. LUMEN
     {
-        name = "Aero",
+        name = "Lumen",
         config = {
             general = {
                 border_size = 2,
@@ -228,7 +222,7 @@ local appearances = {
 
                 shadow = {
                     enabled = true,
-                    range = 7,
+                    range = 6,
                     render_power = 4,
                     color = "rgba(559bd477)",
                 },
@@ -237,7 +231,7 @@ local appearances = {
                     enabled = true,
                     variant = "kawase",
                     size = 3,
-                    passes = 2,
+                    passes = 1,
                     noise = 0.008,
                     contrast = 1.10,
                     brightness = 1.08,
@@ -246,16 +240,16 @@ local appearances = {
                     ignore_opacity = true,
                     new_optimizations = true,
                     xray = false,
-                    popups = true,
-                    special = true,
+                    popups = false,
+                    special = false,
                 },
             },
         },
     },
 
-    -- 6. FROST
+    -- 6. ARCTIC
     {
-        name = "Frost",
+        name = "Arctic",
         config = {
             general = {
                 border_size = 2,
@@ -274,7 +268,7 @@ local appearances = {
 
                 shadow = {
                     enabled = true,
-                    range = 10,
+                    range = 8,
                     render_power = 4,
                     color = "rgba(87d9ff77)",
                 },
@@ -282,9 +276,9 @@ local appearances = {
                 blur = {
                     enabled = true,
                     variant = "frost",
-                    size = 6,
-                    passes = 3,
-                    noise = 0.02,
+                    size = 4,
+                    passes = 2,
+                    noise = 0.015,
                     contrast = 1.12,
                     brightness = 1.07,
                     vibrancy = 0.22,
@@ -292,16 +286,16 @@ local appearances = {
                     ignore_opacity = true,
                     new_optimizations = true,
                     xray = false,
-                    popups = true,
-                    special = true,
+                    popups = false,
+                    special = false,
                 },
             },
         },
     },
 
-    -- 7. JELLY
+    -- 7. JIGGLE
     {
-        name = "Jelly",
+        name = "Jiggle",
         config = {
             general = {
                 border_size = 2,
@@ -309,17 +303,17 @@ local appearances = {
                 gaps_out = 12,
             },
             decoration = {
-                -- Native Hyprland Compiz-style jelly window deformation.
-                -- Softer spring + moderate impulse for visible but controlled wobble.
+                -- Native Hyprland Compiz-style elastic window deformation.
+                -- Elastic spring with a stronger but controlled wobble.
                 wobble = {
                     enabled = true,
-                    mesh = 16,
+                    mesh = 14,
                     stiffness = 160.0,
-                    damping = 8.0,
+                    damping = 7.2,
                     mass = 1.2,
-                    intensity = 0.32,
-                    value_epsilon = 0.25,
-                    velocity_epsilon = 2.0,
+                    intensity = 0.40,
+                    value_epsilon = 0.20,
+                    velocity_epsilon = 1.6,
                 },
                 active_opacity = 0.96,
                 inactive_opacity = 0.92,
@@ -329,7 +323,7 @@ local appearances = {
 
                 shadow = {
                     enabled = true,
-                    range = 10,
+                    range = 8,
                     render_power = 4,
                     color = "rgba(aa55ff77)",
                 },
@@ -337,23 +331,23 @@ local appearances = {
                 blur = {
                     enabled = true,
                     variant = "prism",
-                    size = 5,
-                    passes = 3,
-                    noise = 0.018,
-                    contrast = 1.14,
-                    brightness = 1.08,
-                    vibrancy = 0.42,
-                    vibrancy_darkness = 0.20,
+                    size = 3,
+                    passes = 1,
+                    noise = 0.012,
+                    contrast = 1.10,
+                    brightness = 1.06,
+                    vibrancy = 0.38,
+                    vibrancy_darkness = 0.18,
                     ignore_opacity = true,
                     new_optimizations = true,
                     xray = false,
-                    popups = true,
+                    popups = false,
                     special = false,
 
                     glass = {
-                        refraction = 14.0,
-                        roughness = 0.45,
-                        size = 64.0,
+                        refraction = 11.0,
+                        roughness = 0.48,
+                        size = 56.0,
                     },
                 },
             },
@@ -371,6 +365,9 @@ local profiles_by_name = {}
 
 for _, profile in ipairs(appearances) do
     profiles_by_name[string.lower(profile.name)] = profile
+    if profile.label then
+        profiles_by_name[string.lower(profile.label)] = profile
+    end
 end
 
 function M.apply(name)
@@ -388,13 +385,13 @@ function M.apply(name)
         return false, tostring(err)
     end
 
-    return true, profile.name
+    return true, profile.label or profile.name
 end
 
 function M.names()
     local result = {}
     for index, profile in ipairs(appearances) do
-        result[index] = profile.name
+        result[index] = profile.label or profile.name
     end
     return result
 end
