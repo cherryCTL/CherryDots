@@ -2,7 +2,7 @@
   "version": 2,
   "base": "Sakura",
   "dark": {
-    "primary": "#B9A2D3",
+    "primary": "#A67FD3",
     "on_primary": "#141418",
     "secondary": "#87B0D0",
     "on_secondary": "#141418",
@@ -21,7 +21,7 @@
     "terminal": {
       "background": "#201E2C",
       "foreground": "#A7A8D0",
-      "cursor": "#B9A2D3",
+      "cursor": "#A67FD3",
       "cursor_text": "#141418",
       "selection_bg": "#433B5E",
       "selection_fg": "#A7A8D0",
@@ -31,7 +31,7 @@
         "green": "#88B59F",
         "yellow": "#BFAA75",
         "blue": "#87B0D0",
-        "magenta": "#B9A2D3",
+        "magenta": "#A67FD3",
         "cyan": "#97ACD0",
         "white": "#A7A8D0"
       },
