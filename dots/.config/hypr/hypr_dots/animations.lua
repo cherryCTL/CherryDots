@@ -56,7 +56,7 @@ hl.curve("sakura_normal", {
 
 -- Silk keeps its soft spring for window/layer motion, but uses a dedicated
 -- ease-out curve for workspace transitions. This avoids the spring's long
--- settling tail while preserving the original 400 ms transition duration.
+-- settling tail while keeping the same easing at a 20% shorter duration (320 ms).
 register_spring("sakura_silk", 180, 26)
 hl.curve("sakura_silk_workspace", {
     type = "bezier",
@@ -129,19 +129,19 @@ local profiles = {
         curve = "sakura_silk",
         kind = "spring",
         workspace_curve = "sakura_silk_workspace",
-        speed = 4.0,
+        speed = 3.2,
         workspace_distance = "14%",
         settings = {
-            windows = { speed = 4.0, style = "popin 94%" },
-            windowsIn = { speed = 4.0, style = "popin 94%" },
-            windowsOut = { speed = 3.2, style = "popin 94%" },
-            windowsMove = { speed = 3.8 },
-            layers = { speed = 4.0, style = "fade" },
-            layersIn = { speed = 4.0, style = "fade" },
-            layersOut = { speed = 3.2, style = "fade" },
-            border = { speed = 2.8 },
-            zoomFactor = { speed = 3.5 },
-            monitorAdded = { speed = 3.8 },
+            windows = { speed = 3.2, style = "popin 94%" },
+            windowsIn = { speed = 3.2, style = "popin 94%" },
+            windowsOut = { speed = 2.56, style = "popin 94%" },
+            windowsMove = { speed = 3.04 },
+            layers = { speed = 3.2, style = "fade" },
+            layersIn = { speed = 3.2, style = "fade" },
+            layersOut = { speed = 2.56, style = "fade" },
+            border = { speed = 2.24 },
+            zoomFactor = { speed = 2.8 },
+            monitorAdded = { speed = 3.04 },
         },
     },
 

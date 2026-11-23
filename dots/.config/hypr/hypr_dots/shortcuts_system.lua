@@ -204,12 +204,12 @@ end
 
 local appearance_order = {
     "normal",
-    "performance",
     "silk",
-    "rush",
     "lumen",
-    "arctic",
+    "rush",
     "jiggle",
+    "arctic",
+    "performance",
 }
 
 local current_appearance_index = 1

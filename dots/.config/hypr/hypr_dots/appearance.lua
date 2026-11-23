@@ -121,10 +121,7 @@ local appearances = {
                 rounding_power = 4,
 
                 shadow = {
-                    enabled = true,
-                    range = 6,
-                    render_power = 4,
-                    color = "rgba(358fc866)",
+                    enabled = false,
                 },
 
                 blur = {
@@ -168,10 +165,7 @@ local appearances = {
                 rounding_power = 4,
 
                 shadow = {
-                    enabled = true,
-                    range = 10,
-                    render_power = 4,
-                    color = "rgba(7038d988)",
+                    enabled = false,
                 },
 
                 blur = {
@@ -221,10 +215,7 @@ local appearances = {
                 rounding_power = 3,
 
                 shadow = {
-                    enabled = true,
-                    range = 6,
-                    render_power = 4,
-                    color = "rgba(559bd477)",
+                    enabled = false,
                 },
 
                 blur = {
@@ -267,10 +258,7 @@ local appearances = {
                 rounding_power = 4,
 
                 shadow = {
-                    enabled = true,
-                    range = 8,
-                    render_power = 4,
-                    color = "rgba(87d9ff77)",
+                    enabled = false,
                 },
 
                 blur = {
@@ -322,10 +310,7 @@ local appearances = {
                 rounding_power = 4,
 
                 shadow = {
-                    enabled = true,
-                    range = 8,
-                    render_power = 4,
-                    color = "rgba(aa55ff77)",
+                    enabled = false,
                 },
 
                 blur = {
