@@ -1,0 +1,29 @@
+// list of the appps
+vscodium
+strawberry
+celeluid
+mpv
+mpv-mpris 
+godot 
+belender
+brave-origins
+zen-browser
+hyprland
+noctalia
+bottles
+thunar
+thunar plugins
+kde connect
+local send
+uzdoom
+
+
+// flatpak
+equibop
+
+
+// retro games like batocera
+https://github.com/RetroGamerGER/Embercade 
+
+// for ps1 game making 
+https://github.com/psxsplash/splashedit-ng/releases/tag/nightly
