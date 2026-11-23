@@ -11,36 +11,32 @@ local appearances = {
                 gaps_out = 8,
             },
             decoration = {
-                wobble = {
-                    enabled = false,
-                },
+                -- Lightweight Normal: preserve its animation profile while
+                -- disabling compositor-heavy visual effects.
                 active_opacity = 1.0,
-                inactive_opacity = 0.98,
+                inactive_opacity = 1.0,
                 fullscreen_opacity = 1.0,
                 rounding = 8,
                 rounding_power = 3,
 
                 shadow = {
                     enabled = false,
-                    range = 2,
-                    render_power = 4,
+                },
+
+                glow = {
+                    enabled = false,
+                },
+
+                motion_blur = {
+                    enabled = false,
+                },
+
+                wobble = {
+                    enabled = false,
                 },
 
                 blur = {
-                    enabled = true,
-                    variant = "kawase",
-                    size = 4,
-                    passes = 2,
-                    noise = 0.01,
-                    contrast = 1.05,
-                    brightness = 1.04,
-                    vibrancy = 0.18,
-                    vibrancy_darkness = 0.12,
-                    ignore_opacity = true,
-                    new_optimizations = true,
-                    xray = false,
-                    popups = true,
-                    special = true,
+                    enabled = false,
                 },
             },
         },
@@ -365,7 +361,13 @@ function M.apply(name)
         return false, "Unknown appearance: " .. name
     end
 
-    local ok, err = pcall(hl.config, profile.config)
+    -- Global policy: window shadows stay disabled for every appearance.
+    -- Enforce this at apply-time so no preset can accidentally re-enable them.
+    local config = profile.config
+    config.decoration = config.decoration or {}
+    config.decoration.shadow = { enabled = false }
+
+    local ok, err = pcall(hl.config, config)
     if not ok then
         return false, tostring(err)
     end

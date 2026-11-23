@@ -311,11 +311,12 @@ function M.apply(name, direction)
             if leaf ~= "global" then
                 local is_angle_leaf =
                     leaf == "borderangle" or leaf == "shadowangle" or leaf == "glowangle"
+                local is_shadow_fade = leaf == "fadeShadow"
 
-                -- Keep angle animations disabled in visual profiles. In
-                -- particular, never use the continuous "loop" style here:
-                -- it forces constant redraws and can waste GPU/battery.
-                if is_angle_leaf and name ~= "performance" then
+                -- Shadows are disabled globally, so do not animate their fade
+                -- or angle leaves in any appearance profile. Also avoid
+                -- continuous angle loops that can waste GPU/battery.
+                if is_angle_leaf or is_shadow_fade then
                     hl.animation({ leaf = leaf, enabled = false })
                 else
                     apply_leaf(leaf, profile, profile.settings[leaf])
